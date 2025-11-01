@@ -1,42 +1,43 @@
 # NETRA — AI‑Driven OSINT Orchestration Engine
 
-> Lightweight, composable OSINT orchestration & reporting engine for Kali/Dev environments.
-
-**Repository layout (what's in this directory)**
-
-* `netra.py` — Main orchestration engine. Accepts an initial target (domain/username/ip/email/phone), uses an "AI brain" to create task plans, runs local OSINT tools, pivots, and generates a final report (MD/HTML/PDF/JSON).
-* `phone-osint.py` — Phone number OSINT helper (Numverify/AbstractAPI/IPQS/Twilio integrations). Called by `netra.py` when the target is a phone number. Outputs JSON.
-* `gmail-osint.py` — GHunt wrapper to fetch Gmail-related OSINT (photos, maps, profile links). Produces a normalized `ghunt_final_*.json` envelope consumable by `netra.py`.
-* `report_template.css` — Optional CSS used when generating HTML/PDF reports.
-* `workspaces/` — Sample/empty workspace directory where run-specific workspaces and outputs are created.
+> **Lightweight, composable OSINT orchestration & reporting engine for Kali/Dev environments.**
 
 ---
 
-## Quick TL;DR — Get running in 5 minutes
+## Repository Structure
 
-1. Create a Python virtualenv and activate it:
+- **`netra.py`**: Main orchestration engine. Accepts an initial target (domain, username, IP, email, or phone), uses an "AI brain" for task planning, executes local OSINT tools, pivots, and generates final reports (Markdown/HTML/PDF/JSON).
+- **`phone-osint.py`**: Phone number OSINT helper (integrates Numverify, AbstractAPI, IPQS, Twilio). Invoked by `netra.py` for phone targets. Outputs normalized JSON.
+- **`gmail-osint.py`**: GHunt wrapper for Gmail-related OSINT (photos, maps, profile links). Produces normalized envelopes for `netra.py`.
+- **`report_template.css`**: Optional CSS for styling HTML/PDF reports.
+- **`workspaces/`**: Workspace directory for run-specific outputs and artifacts.
+
+---
+
+## Quick Start
+
+### 1. Set Up Virtual Environment
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. Install Python dependencies:
+### 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Install GHunt (recommended via pipx) and log in:
+### 3. Install GHunt
 
 ```bash
 pip install pipx
 pipx install ghunt
-# or: pipx run -- ghunt login
 ghunt login
 ```
 
-4. Export your Gemini / 3rd-party API keys (example):
+### 4. Export API Keys
 
 ```bash
 export GEMINI_API_KEY="your_gemini_key_here"
@@ -47,30 +48,30 @@ export TWILIO_SID="your_twilio_sid"
 export TWILIO_TOKEN="your_twilio_token"
 ```
 
-5. Run NETRA:
+### 5. Run NETRA
 
 ```bash
 python3 netra.py
-# follow the interactive prompts (target, goal, report format)
+# Follow interactive prompts (target, goal, report format)
 ```
 
 ---
 
 ## Features
 
-* AI-powered task planning + pivoting (uses Google Gemini when configured)
-* Orchestrates local Kali CLI OSINT tools (theHarvester, whois, nslookup, sherlock, photon, dmitry, spiderfoot, dirb, finalrecon, emailharvester, email2phonenumber, metagoofil, etc.)
-* Phone-specific OSINT via `phone-osint.py` (normalization, multiple API lookups, web evidence collection)
-* Gmail-specific OSINT via GHunt wrapper `gmail-osint.py` with robust URL and Maps extraction
-* SQLite backend to persist discovered artifacts
-* Outputs: Markdown / HTML / PDF / JSON reports and raw tool outputs
-* Safe fallbacks when AI is unavailable (deterministic report)
+- **AI-Powered Planning & Pivoting**: Uses Google Gemini for intelligent task orchestration (if API key provided).
+- **Integration with Kali OSINT Tools**: Orchestrates tools like theHarvester, whois, nslookup, sherlock, photon, dmitry, spiderfoot, dirb, finalrecon, emailharvester, email2phonenumber, metagoofil, and more.
+- **Phone OSINT**: `phone-osint.py` for phone number normalization, multi-API enrichment, and web evidence collection.
+- **Gmail OSINT**: `gmail-osint.py` wraps GHunt for Gmail artifact extraction and normalization.
+- **SQLite Backend**: Persists discovered artifacts for auditability and reporting.
+- **Flexible Report Generation**: Output in Markdown, HTML, PDF, or JSON.
+- **Resilient Fallbacks**: Deterministic, reliable operation even when AI services are unavailable.
 
 ---
 
-## Detailed usage
+## Detailed Usage
 
-### `netra.py` (main)
+### `netra.py` (Main Orchestrator)
 
 Run interactively:
 
@@ -78,94 +79,81 @@ Run interactively:
 python3 netra.py --api-key "$GEMINI_API_KEY"
 ```
 
-You will be prompted for:
-
-* initial target (domain, username, ip, email, phone)
-* investigation goal (plain English)
-* report format (`md`, `html`, `pdf`, `json`)
-
-Behavior notes:
-
-* If the initial target looks like a phone number (E.164-ish), NETRA will create a deterministic `phone-osint` task and call `phone-osint.py --json <number>`.
-* If the initial target is an email address, NETRA will call `gmail-osint.py` (which in turn calls GHunt) and ingest the returned envelope JSON.
-* NETRA caches tool outputs, stores raw outputs to the `tool_results` DB table and sanitized artifacts to tables like `domains`, `hosts`, `contacts`, `profiles`, `breaches`, and `phone_results`.
+- **Prompts for**:
+  - Target (domain, username, IP, email, phone)
+  - Investigation goal (plain English)
+  - Report format (`md`, `html`, `pdf`, `json`)
+- **Automatic Tool Selection**:
+  - Phone targets: Invokes `phone-osint.py --json <number>`
+  - Email targets: Invokes `gmail-osint.py` (requires GHunt)
+- **Data Persistence**: 
+  - Caches tool outputs, stores raw/sanitized results in SQLite tables like `domains`, `hosts`, `contacts`, `profiles`, `breaches`, and `phone_results`.
 
 ### `phone-osint.py`
 
-This file is a standalone phone OSINT helper. Example usage:
+Standalone helper for phone number intelligence:
 
 ```bash
 python3 phone-osint.py "+1 202-555-0123" --json --numverify-key $NUMVERIFY_API_KEY --max-results 10
 ```
 
-Expected features implemented by the helper:
+- **Features**:
+  - E.164 normalization via `phonenumbers`
+  - Multi-API enrichment (Numverify, AbstractAPI, IPQS, Twilio)
+  - Web evidence via googlesearch + scraping
+  - Strict JSON output for ingestion by NETRA
 
-* Normalize to E.164 (uses `phonenumbers`)
-* Optional enrich via Numverify, AbstractAPI, IPQS, Twilio Lookup
-* Web evidence scraping (googlesearch + page scraping)
-* Structured JSON output with `number_e164`, `country`, `carrier`, `line_type`, `web_results`, `confidence`
-
-NETRA calls `phone-osint.py --json <number>` and expects strict JSON back. The NETRA engine sanitizes and validates the received phone JSON before storing it.
-
-### `gmail-osint.py` (GHunt wrapper)
+### `gmail-osint.py` (GHunt Wrapper)
 
 Example:
 
 ```bash
-python3 gmail-osint.py soumadeeppal33@gmail.com --json --follow-redirects --download-photos
+python3 gmail-osint.py target@gmail.com --json --follow-redirects --download-photos
 ```
 
-What it does:
-
-* Runs `ghunt email <target> --json <outfile>`
-* Loads the raw GHunt JSON
-* Extracts URLs robustly (regex), detects photo candidates, maps/profile links, display name & location hints
-* Optionally resolves short links (via `requests`) to find canonical Maps links
-* Writes `ghunt_final_<target>_<ts>.json` and prints the normalized envelope for NETRA to ingest
-
-Important: GHunt must be installed and configured (see GHunt docs). `gmail-osint.py` is a thin wrapper that normalizes GHunt output for NETRA.
+- **Features**:
+  - Runs and normalizes `ghunt email` output
+  - Extracts URLs, photos, maps, profiles, display names, and location hints
+  - Optionally resolves short links
+  - Outputs a normalized JSON envelope for NETRA
 
 ---
 
 ## Requirements
 
-See `requirements.txt` for the full Python dependency list. Key packages:
+- **Python dependencies**: See `requirements.txt`. Key packages:
+  - `google-generativeai` (optional, for AI features)
+  - `markdown2`, `weasyprint` (for HTML/PDF reports)
+  - `requests`, `beautifulsoup4`, `lxml` (scraping)
+  - `phonenumbers`, `tld`, `python-dotenv`, `pydantic`, `langchain` (optional)
+- **System packages** (Debian/Kali, for PDF and tools):
 
-* `google-generativeai` (optional — Gemini integration for AI planning & report synthesis)
-* `markdown2`, `weasyprint` (for HTML/PDF report generation)
-* `requests`, `beautifulsoup4`, `lxml` (web scraping & redirection)
-* `phonenumbers` (phone normalization)
-* `googlesearch-python` (optional — web search helper)
-* `tld`, `python-dotenv`, `pydantic`, `langchain` (optional augmentation)
+  ```bash
+  sudo apt update
+  sudo apt install -y build-essential python3-dev python3-venv libffi-dev libssl-dev libxml2-dev libxslt1-dev zlib1g-dev \
+    libcairo2 libcairo2-dev libpango1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 shared-mime-info libjpeg-dev
+  ```
 
-System packages (Debian/Kali) required for PDF generation and some tools:
+- **OSINT Tools** (install via apt):
 
-```bash
-sudo apt update
-sudo apt install -y build-essential python3-dev python3-venv libffi-dev libssl-dev libxml2-dev libxslt1-dev zlib1g-dev \
-  libcairo2 libcairo2-dev libpango1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 shared-mime-info libjpeg-dev
-```
+  ```bash
+  sudo apt update && sudo apt install theharvester dmitry photon dirb metagoofil
+  # spiderfoot may require pip/pipx per its docs
+  ```
 
-Also install GHunt via `pipx` (recommended):
+- **GHunt**: Install via `pipx` and authenticate:
 
-```bash
-pip install pipx
-pipx install ghunt
-ghunt login
-```
-
-Some Kali CLI OSINT tools are expected to be present (installable via apt): `theharvester`, `dmitry`, `photon`, `emailharvester`, `finalrecon`, `spiderfoot`, `dirb`, `metagoofil`, `sherlock`, etc. You can install them via:
-
-```bash
-sudo apt update && sudo apt install theharvester dmitry photon dirb metagoofil
-# spiderfoot may be available as spiderfoot or via pip/pipx per its docs
-```
+  ```bash
+  pip install pipx
+  pipx install ghunt
+  ghunt login
+  ```
 
 ---
 
-## Configuration & environment variables
+## Configuration & Environment
 
-Recommended environment variables (export in shell or use a `.env` file and load with `python-dotenv`):
+Recommended environment variables (export or use `.env`):
 
 ```bash
 GEMINI_API_KEY=...
@@ -176,105 +164,103 @@ TWILIO_SID=...
 TWILIO_TOKEN=...
 ```
 
-* `GEMINI_API_KEY` — required to enable the AI brain (task planning and report synthesis). If missing NETRA will run in limited/deterministic mode.
-* Phone API keys are optional but improve phone enrichment reliability.
+- `GEMINI_API_KEY` — (Optional) Enables AI task planning/reporting. Without it, NETRA runs deterministically.
+- API keys for phone enrichment are optional but recommended.
 
-**Security note:** Keep API keys out of the repository. Use environment variables or secret managers.
-
----
-
-## How NETRA stores data
-
-* Uses an on-disk SQLite DB per workspace (file: `workspaces/<target>_<ts>/data.db`).
-* Tables include: `domains`, `hosts`, `contacts`, `profiles`, `breaches`, `tool_results`, `phone_results`.
-* Raw tool outputs are saved in `tool_results` for auditability. Cleaned, validated artifacts are saved to other tables and used when synthesizing the final report.
+> **Security:** Never commit API keys. Use environment variables or secret managers.
 
 ---
 
-## Report generation
+## Data Storage
 
-* NETRA synthesizes a Markdown report using the AI (when available) or a deterministic fallback.
-* Outputs are written to the workspace:
-
-  * `report.md` (Markdown)
-  * `report.html` (HTML, if `markdown2` available)
-  * `report.pdf` (PDF via `weasyprint`, if available)
-  * `report.json` (raw DB dump, when `json` format requested)
-
-The `report_template.css` is applied to HTML/PDF outputs if present.
+- **SQLite**: Each workspace has its own database (`workspaces/<target>_<ts>/data.db`).
+- **Tables**: `domains`, `hosts`, `contacts`, `profiles`, `breaches`, `tool_results`, `phone_results`.
+- **Raw & Cleaned Data**: Raw tool outputs are retained for auditing; sanitized artifacts are used in reports.
 
 ---
 
-## Troubleshooting & common issues
+## Report Generation
 
-### GHunt reports no maps/profile link but `ghunt` CLI shows it
+- **Formats**: Markdown, HTML, PDF, JSON
+- **Location**: Saved in the workspace directory as `report.md`, `report.html`, `report.pdf`, and/or `report.json`.
+- **Styling**: `report_template.css` is used for HTML/PDF if present.
+- **AI Synthesis**: Uses AI for advanced synthesis when available, otherwise falls back to deterministic reporting.
 
-* Ensure you run the wrapper with `--follow-redirects` to expand short map links.
-* Ensure GHunt is authenticated (`ghunt login`) before running the wrapper.
-* Inspect the raw `ghunt_*.json` file to see whether GHunt emitted the map/profile entry.
+---
 
-### `ModuleNotFoundError: No module named 'tld'` or other missing Python deps
+## Troubleshooting
 
-* Install the missing package in your virtualenv or system Python: `pip install tld`.
-* Use the `requirements.txt` and follow the setup steps to avoid individual misses.
+### GHunt Issues
 
-### AI returns malformed JSON or quota errors (429)
+- Ensure `--follow-redirects` is used for map/profile link extraction.
+- Run `ghunt login` before using the wrapper.
+- Check raw `ghunt_*.json` for expected entries.
 
-* Check `GEMINI_API_KEY` and quota usage. If you hit rate limits, either pause or switch to the deterministic fallback mode.
-* The engine tolerates missing AI by returning deterministic reports.
+### Missing Python Modules
 
-### CLI tools returning usage/argparse errors (e.g., `linkedin2username` missing flags)
+- Install missing dependencies with `pip install <module>`.
+- Use `requirements.txt` to avoid omissions.
 
-* NETRA attempts to detect tool usage errors and treat them as non-actionable warnings. If a tool requires specific flags (like a company), avoid invoking it for incompatible target types.
+### AI Errors (Malformed JSON/Quota)
+
+- Check `GEMINI_API_KEY` validity and usage.
+- If rate-limited, NETRA will fall back gracefully.
+
+### CLI Tool Usage Errors
+
+- NETRA attempts to handle tool-specific argument errors gracefully.
+- Avoid invoking incompatible tools for given target types.
 
 ---
 
 ## Extending NETRA
 
-* Add new tool wrappers by implementing a `_run_tool(tool, target)` branch and a corresponding `_parse_output(tool, target, output)` parser that returns structured findings.
-* When adding external helpers (like `phone-osint.py` or `gmail-osint.py`), ensure they support a `--json` output mode that NETRA can parse.
-* Keep AI prompts small and grounded: pass only essential, factual evidence to avoid hallucination.
+- **New Tool Integration**: Add a `_run_tool(tool, target)` branch and a `_parse_output(tool, target, output)` parser.
+- **External Helpers**: Ensure they support a `--json` output mode.
+- **AI Prompting**: Keep prompts concise and evidence-based to minimize hallucination.
 
 ---
 
-## Legal / Ethical / Operational notes
+## Legal, Ethical & Operational Notes
 
-* **Only run NETRA against systems or accounts you are authorized to assess.** Unauthorized scanning, data exfiltration, or impersonation is illegal and unethical.
-* Respect privacy and terms of service for third-party APIs (GHunt, Numverify, AbstractAPI, IPQS, Twilio, etc.).
-* When using internet search scraping, obey site `robots.txt` and rate limits.
+- **Authorization**: Only use NETRA on systems/accounts you are permitted to assess.
+- **Privacy**: Respect privacy and API terms of use.
+- **Web Scraping**: Obey `robots.txt` and site rate limits.
 
 ---
 
-## Roadmap & ideas for future work
+## Roadmap
 
-* GUI / Web dashboard with multi-tenant workspaces
-* API for enterprise ingestion (webhooks, streaming results)
-* SIEM/SOC connectors (forward findings to Splunk / Elastic / Azure Sentinel)
-* Built-in scheduling / continuous monitoring for brand protection
-* Hardened evidence chain (signed reports, verifiable hashes)
+- Web dashboard with multi-tenant workspaces
+- API endpoints for enterprise integration
+- SIEM/SOC connectors (Splunk, Elastic, Sentinel, etc.)
+- Continuous monitoring/scheduling
+- Evidence chain hardening (signed, verifiable reports)
 
 ---
 
 ## Contributing
 
-1. Fork the repo
+1. Fork the repository
 2. Create a feature branch
-3. Run tests / linting
+3. Run tests and linting
 4. Open a PR with a clear description
 
-Please follow responsible disclosure if you add checks that might reveal vulnerabilities.
+> **Note:** For checks that may expose vulnerabilities, please follow responsible disclosure practices.
 
 ---
 
 ## License
 
-Choose an appropriate license for your project (MIT, Apache-2.0, etc.). This README does not include a license file — add one to the repo root.
+Choose and add an appropriate license file (e.g., MIT, Apache-2.0) to the repository root.
 
 ---
 
-If you want, I can:
+## Next Steps
 
-* Produce a `setup.sh` that automates system deps + venv setup + pip install (safe, interactive), or
-* Create a `CONTRIBUTING.md` and `ISSUE_TEMPLATE.md` for your GitHub repo.
+Want automation or contributing templates?
 
-Tell me which next and I will drop it in the repo.
+- Generate a `setup.sh` script for system and Python setup
+- Create a `CONTRIBUTING.md` and `ISSUE_TEMPLATE.md`
+
+Let us know what you need next!
