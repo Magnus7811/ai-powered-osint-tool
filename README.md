@@ -256,11 +256,3 @@ Choose and add an appropriate license file (e.g., MIT, Apache-2.0) to the reposi
 
 ---
 
-## Next Steps
-
-Want automation or contributing templates?
-
-- Generate a `setup.sh` script for system and Python setup
-- Create a `CONTRIBUTING.md` and `ISSUE_TEMPLATE.md`
-
-Let us know what you need next!
