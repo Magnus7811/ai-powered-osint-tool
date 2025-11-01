@@ -1,0 +1,33 @@
+# Core Python libs used by phone_api_osint.py (f1.py)
+phonenumbers
+requests
+beautifulsoup4
+lxml
+
+# Google search scraping library used in f1.py
+googlesearch-python
+
+# Twilio client (optional if you plan Twilio lookups)
+twilio
+
+# Markdown / reporting libs used by netra.py
+markdown2
+weasyprint
+
+# Google Generative AI client (Gemini / GenAI). Install one of these:
+# google-generativeai provides `import google.generativeai as genai`
+# google-genai is the newer genai SDK; include both in case environments differ.
+google-generativeai
+google-genai
+
+# Small helpers / extras / validators (some CLI tools like emailharvester require 'validators')
+validators
+tld
+
+# Optional but recommended for structured validation / LangChain integration
+pydantic
+langchain
+
+# Optional convenience
+python-dotenv
+
